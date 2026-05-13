@@ -319,10 +319,10 @@ def to_multiplets_dict(
 @dataclass
 class CandidateConfig:
     k_min: int = 3
-    k_max: int = 6
+    k_max: int = 4
     max_initial: Optional[int] = None
     kappa_mode: str = "factorial"
-    expand_max_size: int = 7
+    expand_max_size: int = 5
     expand_top_per_seed: int = 3
     expand_min_gain_ratio: float = 0.05
     top_per_size: Optional[int] = None  # e.g., keep best 100 per size
@@ -389,30 +389,3 @@ def load_correlation_matrix_R(R_path: str) -> np.ndarray:
     corr_R = 0.5 * (corr_R + corr_R.T)
     np.fill_diagonal(corr_R, 1.0)
     return corr_R
-
-
-if __name__ == "__main__":
-    path = ('C:/Users/utente/Documents/DataScience/TESI_MAGISTRALE/DATA/GRAPHS_DIAG/poly_graphs'
-            '/ANBP_network.graphml')
-    G = ig.read(path)
-    R = load_correlation_matrix_R(
-        'C:/Users/utente/Documents/DataScience/TESI_MAGISTRALE/DATA/GRAPHS_DIAG/polychoric_matrices'
-        '/ANBP_PSY_polychoric.csv')
-
-    cfg = CandidateConfig(
-        k_min=3,
-        k_max=5,
-        max_initial=None,  # limit if needed
-        kappa_mode="factorial",  # stronger downweight for large sets
-        expand_max_size=5,  # allow one-step growth beyond cliques
-        expand_top_per_seed=2,  # keep expansions under control
-        expand_min_gain_ratio=0.05,  # +5% score improvement to accept
-        top_per_size=300  # keep top 200 per size; tune as needed
-    )
-
-    seeds = _initial_cliques(G, cfg.k_min, cfg.k_max, cfg.max_initial)
-
-    multiplets_diags = build_candidate_multiplets(G=G, R=R, cfg=cfg)
-    for k, v in multiplets_diags.items():
-        print(k, len(v))
-    # print(multiplets_diags)
