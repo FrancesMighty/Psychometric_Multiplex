@@ -319,10 +319,10 @@ def to_multiplets_dict(
 @dataclass
 class CandidateConfig:
     k_min: int = 3
-    k_max: int = 4
+    k_max: int = 6
     max_initial: Optional[int] = None
     kappa_mode: str = "factorial"
-    expand_max_size: int = 5
+    expand_max_size: int = 7
     expand_top_per_seed: int = 3
     expand_min_gain_ratio: float = 0.05
     top_per_size: Optional[int] = None  # e.g., keep best 100 per size
