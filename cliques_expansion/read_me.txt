@@ -1,0 +1,1 @@
+This folder contains the .ipynb files related to the selection of hyperedges obtained by leveraging the clique expansion concept. Two different sub-approaches were followed to build the dyadic graph from which the cliques were extracted: the first one based on polychoric correlation, and the second one based on nonparanormal correlation.
