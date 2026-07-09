@@ -119,7 +119,7 @@ Since `U` is one-hot, each term `uᵢᵀ W uⱼ` reduces to `W[comm(i), comm(j)]
 
 A hyperedge scores high when all its items belong to communities that are strongly coupled in `W`. κ prevents larger hyperedges from trivially dominating due to having more pairs.
 
-This scoring approach is inspired by **Contisciani et al.**'s generative model for hypergraphs with community structure.
+This scoring approach is inspired by **Contisciani et al.**'s generative model for hypergraphs with community structure, but it is a relaxed version, suitable for this pipeline, which aims to provide a pre-selection of hyperedges.
 
 ---
 
