@@ -44,10 +44,14 @@ data_dir = paste(base_dir, "EDI_DIAG", sep='/')
 # Output directories for NPN (Nonparanormal) method
 npn_mat_dir = paste(base_dir, "GRAPHS_DIAG/NPN_mat", sep='/')        # Correlation matrices
 dyadic_npn_dir = paste(base_dir, "GRAPHS_DIAG/NPN_graphs", sep='/')  # Network graphs
+dir.create(npn_mat_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(dyadic_npn_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Output directories for POLY (Polychoric) method
 poly_mat_dir = paste(base_dir, "GRAPHS_DIAG/POLY_mat", sep='/')      # Correlation matrices
 dyadic_poly_dir = paste(base_dir, "GRAPHS_DIAG/POLY_graphs", sep='/') # Network graphs
+dir.create(poly_mat_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(dyadic_poly_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Load list of all CSV data files for each diagnosis
 # Pattern: "EDI_[diagnosis].csv"
@@ -123,7 +127,6 @@ get_polyR = function(data, make_positive_definite = TRUE, verbose = TRUE) {
   return(list(R=R, name=name))
 }
 
-
 # --- Process each diagnosis file ---
 for (file_path in diag_data_files) {
   # Extract diagnosis name from filename
@@ -149,8 +152,11 @@ for (file_path in diag_data_files) {
   # ---- Export: Correlation matrix ----
   out_file = file.path(
     poly_mat_dir,
-    paste0(tools::file_path_sans_ext(basename(file_path)), paste0(name, "_polychoric.csv"))
+    paste0(tools::file_path_sans_ext(basename(file_path)), paste0("_", name, "_polychoric.csv"))
   )
+  ##############
+  dir.create(dirname(out_file), recursive = TRUE, showWarnings = FALSE)
+  ###############
   write.csv(poly_cor, out_file, row.names = TRUE)
   cat('Poly corr done\n')
   
@@ -223,7 +229,7 @@ for (file_path in diag_data_files) {
   data = read.csv(file_path)[2:92]
   # sapply(data, as.numeric): ensure all columns are numeric
   X_mat <- as.matrix(sapply(data, as.numeric))
-    
+  
   # ---- Apply Nonparanormal transformation ----
   # huge.npn(): Gaussian copula transformation
   # Approximately linearizes rank-based relationships
@@ -257,157 +263,20 @@ for (file_path in diag_data_files) {
   g = delete_edges(g, which(E(g)$weight == 0))
   print(ecount(g))       # Print edge count
   print(is.connected(g)) # Check connectivity
-    
+  
   # ---- Export: GraphML format ----
   net_sub_path = paste(diag, "network.graphml", sep='_' )
   write_graph(g, file.path(dyadic_npn_dir, net_sub_path), format = "graphml")
 }
 
-
-
-# ============================================================
-# SECTION 3: REDUNDANCY ANALYSIS VIA UVA
-# ============================================================
+##############
+# BY THE END OF THIS PIPELINE, YOU GET THE FOLLLOWING DIR STRUCTURE:
+# NPN_GRAPHS
+#       DIAG_NAME_network.graphml
+# NPN_MAT
+#       DIAG_NAME_huge_matrix.csv 
+# POLY_GRAPHS
+#       DIAG_NAME_network.graphml
+# POLY_MAT
+#       DIAG_NAME_PSY_matrix.csv 
 #
-# METHOD:
-#   UVA = Unique Validity Analysis
-#   Identifies "redundant" nodes (variables) that don't contribute
-#   unique information to the network structure.
-#
-# INTERPRETATION:
-#   Redundant nodes: highly replaceable by their neighbors
-#                    (low unique variance explained)
-#   Essential nodes:  essential to network structure
-#
-# NOTE:
-#   Applied to both NPN and POLY correlation matrices separately
-#
-
-# Initialize lists to store redundancy results
-# Keys = diagnosis names, Values = redundant node indices
-red_NPN_UVA = vector("list", length(npn_mats))
-names(red_NPN_UVA) = tools::file_path_sans_ext(basename(npn_mats))
-
-red_POLY_UVA = vector("list", length(poly_mats))
-names(red_POLY_UVA) = tools::file_path_sans_ext(basename(poly_mats))
-
-# Load list of correlation matrices from disk
-# (outputs from Sections 1 and 2)
-npn_mats = list.files(npn_mat_dir, pattern = "\\.csv$", full.names = TRUE) 
-poly_mats = list.files(poly_mat_dir, pattern = "\\.csv$", full.names = TRUE)   
-
-
-# --- NPN METHOD: Identify redundant nodes ---
-for (file_path in npn_mats) {
-  diag = tools::file_path_sans_ext(basename(file_path))
-  # Read correlation matrix (skip row names)
-  R = read.csv(file_path)[2:92]
-  print(diag)
-  
-  # UVA: Unique Validity Analysis
-  # data:          correlation/covariance matrix
-  # n:             sample size (1206 subjects)
-  # type:          "ordinal" (appropriate for Likert data)
-  # uva.method:    "MBR" = Minimum Bottleneck Rerouting network method
-  # cut.off:       significance threshold for redundancy
-  # reduce.method: 'latent' = latent variable reduction method
-  uva_results = UVA(
-    data = R,
-    n = 1206,
-    type = "ordinal",
-    uva.method = "MBR",
-    cut.off = cutoff_val,           
-    reduce.method = 'latent'
-  )
-  
-  # Extract list of redundant nodes for this diagnosis
-  red_NPN_UVA[[diag]] = uva_results$redundant
-}
-
-# ---- Export: NPN redundancy results ----
-write_json(red_NPN_UVA, "red_NPN_UVA.json", pretty = TRUE)
-
-
-# --- POLY METHOD: Identify redundant nodes ---
-for (file_path in poly_mats) {
-  diag = tools::file_path_sans_ext(basename(file_path))
-  R = read.csv(file_path)[2:92]
-  print(diag)
-  
-  # Same UVA analysis on polychoric correlations
-  uva_results = UVA(
-    data = R,
-    n = 1206,
-    type = "ordinal",
-    uva.method = "MBR",
-    cut.off = cutoff_val,           
-    reduce.method = 'latent'
-  )
-  
-  # Extract redundant nodes
-  red_POLY_UVA[[diag]] = uva_results$redundant
-}
-
-# ---- Export: POLY redundancy results ----
-write_json(red_POLY_UVA, "red_POLY_UVA.json", pretty = TRUE)
-
-
-
-
-# ============================================================
-# SECTION 4: GENERAL NETWORK (OVERALL SAMPLE)
-# ============================================================
-#
-# PURPOSE:
-#   Create a single network graph from the full EDI dataset
-#   (all 1206 subjects combined, not separated by diagnosis)
-#
-# NOTE:
-#   Uses NPN method (same as Section 2)
-#
-
-# ---- Load full dataset ----
-# Read from SPSS format (.sav)
-EDI_data = read_sav("~/DataScience/TESI_MAGISTRALE/DATA/EDI-3/EDI-3-merged-overall-sample_5-pt-scoring--n-1206-.sav")
-# Sort by PatientID for consistency
-EDI_data = EDI_data[order(EDI_data$PatientID), ]
-# Select EDI items (columns 2:92)
-EDI_items = EDI_data[2:92]
-
-# ---- Convert to numeric matrix ----
-X_mat <- as.matrix(sapply(EDI_items, as.numeric))
-
-# ---- Apply Nonparanormal transformation ----
-X_npn <- huge.npn(X_mat, npn.func = "shrinkage")
-
-# ---- Compute Pearson correlation on transformed data ----
-R_npn <- cor(X_npn)
-
-# ---- Export: Correlation matrix ----
-write.csv(R_npn, "huge_matrix_ALL.csv", row.names = TRUE)
-
-# ---- Network estimation: EBICglasso ----
-EBIC_fit <- EBICglasso(R_npn, 
-                       n = nrow(X_mat), 
-                       gamma = 0.1)
-
-# ---- Convert to graph object ----
-g = graph_from_adjacency_matrix(
-  EBIC_fit,
-  mode = "undirected",
-  weighted = TRUE,
-  diag = FALSE
-)
-
-# ---- Clean: Remove zero-weight edges ----
-g = delete_edges(g, which(E(g)$weight == 0))
-print(ecount(g))       # Print edge count
-print(is.connected(g)) # Check connectivity
-
-# ---- Export: GraphML format ----
-# Final output: network graph for all 1206 subjects
-write_graph(g, "network_ALL.graphml", format = "graphml")
-
-# ============================================================
-# END OF PIPELINE
-# ============================================================
