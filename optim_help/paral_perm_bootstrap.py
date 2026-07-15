@@ -26,8 +26,8 @@ except Exception:
 # Swap this import depending on your data type:
 #   - discrete variables     → use O_Information
 #   - continuous variables   → use O_Info_Gaussian (assumes Gaussian distribution)
-# from . import O_Information as o_info
-from . import O_Info_Gaussian as o_info
+from . import O_Information as o_info
+#from . import O_Info_Gaussian as o_info
 
 
 # =====================================
